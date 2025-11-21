@@ -179,20 +179,6 @@ Checks if an order is valid and calculates margin requirements without placing i
 **Query Parameters**:
 - `action` (int): Order type (0=BUY, 1=SELL)
 - `symbol` (str): e.g., "EURUSD"
-- `volume` (float): e.g., 1.0
-- `price` (float): Open price
-
-**Response**:
-```json
-{
-  "margin": 200.0
-}
-```
-
----
-
-## Market Data
-
 ### Get Symbol Info
 **GET** `/market/symbol/{symbol}`
 

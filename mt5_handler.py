@@ -190,4 +190,84 @@ class MT5Handler:
                 return info._asdict()
             return None
 
+    async def close_position(self, ticket: int, login=None, password=None, server=None):
+        if not self.connected:
+            return None
+        
+        async with self.lock:
+            if login and password and server:
+                if not await self.ensure_connected(login, password, server):
+                    return None
+            
+            # Get position details
+            positions = mt5.positions_get(ticket=ticket)
+            if not positions:
+                return {"retcode": -1, "comment": "Position not found"}
+            
+            position = positions[0]
+            tick = mt5.symbol_info_tick(position.symbol)
+            if not tick:
+                return {"retcode": -1, "comment": "Symbol tick not found"}
+            
+            request = {
+                "action": mt5.TRADE_ACTION_DEAL,
+                "position": position.ticket,
+                "symbol": position.symbol,
+                "volume": position.volume,
+                "type": mt5.ORDER_TYPE_SELL if position.type == mt5.ORDER_TYPE_BUY else mt5.ORDER_TYPE_BUY,
+                "price": tick.bid if position.type == mt5.ORDER_TYPE_BUY else tick.ask,
+                "deviation": 20,
+                "magic": position.magic,
+                "comment": "python script close",
+                "type_time": mt5.ORDER_TIME_GTC,
+                "type_filling": mt5.ORDER_FILLING_IOC,
+            }
+            
+            result = mt5.order_send(request)
+            if result:
+                return result._asdict()
+            return None
+
+    async def close_all_positions(self, login=None, password=None, server=None):
+        if not self.connected:
+            return []
+        
+        async with self.lock:
+            if login and password and server:
+                if not await self.ensure_connected(login, password, server):
+                    return []
+            
+            positions = mt5.positions_get()
+            if not positions:
+                return []
+            
+            results = []
+            for position in positions:
+                tick = mt5.symbol_info_tick(position.symbol)
+                if not tick:
+                    results.append({"ticket": position.ticket, "retcode": -1, "comment": "Symbol tick not found"})
+                    continue
+                
+                request = {
+                    "action": mt5.TRADE_ACTION_DEAL,
+                    "position": position.ticket,
+                    "symbol": position.symbol,
+                    "volume": position.volume,
+                    "type": mt5.ORDER_TYPE_SELL if position.type == mt5.ORDER_TYPE_BUY else mt5.ORDER_TYPE_BUY,
+                    "price": tick.bid if position.type == mt5.ORDER_TYPE_BUY else tick.ask,
+                    "deviation": 20,
+                    "magic": position.magic,
+                    "comment": "python script close all",
+                    "type_time": mt5.ORDER_TIME_GTC,
+                    "type_filling": mt5.ORDER_FILLING_IOC,
+                }
+                
+                result = mt5.order_send(request)
+                if result:
+                    results.append(result._asdict())
+                else:
+                    results.append({"ticket": position.ticket, "retcode": -1, "comment": "Order send failed"})
+            
+            return results
+
 mt5_handler = MT5Handler()

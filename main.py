@@ -81,6 +81,18 @@ async def calc_margin(action: int, symbol: str, volume: float, price: float):
         return {"margin": margin}
     raise HTTPException(status_code=500, detail="Failed to calculate margin")
 
+@app.post("/trade/close/{ticket}", response_model=dict)
+async def close_position(ticket: int):
+    result = await mt5_handler.close_position(ticket)
+    if result:
+        return result
+    raise HTTPException(status_code=500, detail="Failed to close position")
+
+@app.post("/trade/close_all", response_model=List[dict])
+async def close_all_positions():
+    results = await mt5_handler.close_all_positions()
+    return results
+
 @app.get("/market/symbol/{symbol}", response_model=dict)
 async def get_symbol_info(symbol: str):
     info = await mt5_handler.get_symbol_info(symbol)
